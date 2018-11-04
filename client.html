@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+   <head>
+     <meta charset="utf-8" />
+     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+     <title>Chatroom</title>
+     <meta name="viewport" content="width=device-width, initial-scale=1">
+     <!-- for whatever reason Im having trouble linking the style sheet -->
+     <!-- <link rel="stylesheet" type="text/css" href="style.css"/> -->
+     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+     <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+     <script src="/socket.io/socket.io.js"></script>
+     <script type ="text/javascript">
+
+      var socketio = io.connect();
+      socketio.on("message_to_client",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+      });
+      socketio.on("username_info",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("allUsers").appendChild(document.createElement("hr"));
+         document.getElementById("allUsers").appendChild(document.createTextNode(data['username']));
+      });
+
+      function sendMessage(){
+         var msg = document.getElementById("message_input").value;
+         socketio.emit("message_to_server", {message:msg});
+      }
+      function newRoom(){
+         var msg = document.getElementById("newRoom_input").value;
+         socketio.emit("message_to_server", {message:msg});
+      }
+      function login(){
+         var user = document.getElementById("username_input").value;
+         //have to check if user already exits at some point as well
+         if(user == null){
+           alert("username is null");
+         }
+         else{
+           socketio.emit("login_success", {username:user});
+           $("#welcome_message").removeClass("off");
+           $("#action_bar").removeClass("off");
+           $("#login_bar").addClass("off");
+           $("#logout_bar").removeClass("off");
+
+           $("#goodbye_message").addClass("off");
+
+
+
+         }
+      }
+      function logout(){
+         var msg = document.getElementById("newRoom_input").value;
+         socketio.emit("message_to_server", {message:msg});
+      }
+
+      </script>
+
+      <style type="text/css">
+       .off {
+           display: none;
+       }
+     </style>
+   </head>
+   <body>
+
+    <div id="login_bar">
+     <label for="username_input"><b>Login:</b></label>
+     <input type="text" id="username_input"/>
+     <button onclick="login()">Login</button>
+    </div>
+
+    <div id="logout_bar" class="off">
+     <button onclick="logout()">Logout</button>
+    </div>
+
+    <label id="welcome_message" class="off">Welcome to the chatroom!</label>
+    <label id="goodbye_message" class="off">You have left the chatroom!</label>
+
+
+
+
+    <div id="action_bar" class="off">
+     <label for="newRoom_input"><b>Create New Room:</b></label>
+     <input type="text" id="newRoom_input"/>
+     <button onclick="newRoom()">Create</button>
+
+     <label for="message_input"><b>Send Message:</b></label>
+     <input type="text" id="message_input"/>
+     <button onclick="sendMessage()">send</button>
+    </div>
+
+      <div id="chatlog"></div>
+      <div id="allUsers"></div>
+
+
+
+
+
+
+
+   </body>
+</html>
