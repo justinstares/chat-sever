@@ -15,47 +15,84 @@
      <script type ="text/javascript">
 
       var socketio = io.connect();
+      var user;
+
       socketio.on("message_to_client",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
          document.getElementById("chatlog").appendChild(document.createElement("hr"));
-         document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+         document.getElementById("chatlog").appendChild(document.createTextNode(data['username'] + ": " + data['message']));
       });
-      socketio.on("username_info",function(data) {
+      socketio.on("login_info",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
-         document.getElementById("allUsers").appendChild(document.createElement("hr"));
-         document.getElementById("allUsers").appendChild(document.createTextNode(data['username']));
+         document.getElementById("welcome_message").innerHTML = "Welcome to the Main Paige: " + user;
+         //document.getElementById("users_list").innerHTML = "Welcome2: " + data['usersArray'];
+
+         document.getElementById("users_list").innerHTML = "<strong>" + "Users:" + "</strong>" + "<br>";
+        for(var i = 0; i<data['usersArray'].length; i++){
+          document.getElementById("users_list").innerHTML += data['usersArray'][i] + "<br>";
+         }
+        document.getElementById("chat_list").innerHTML = "<strong>" + "List of Chatrooms:" + "</strong>" + "<br>";
+        for(var j = 0; j<data['roomsArray'].length; j++){
+        document.getElementById("chat_list").innerHTML += data['roomsArray'][j] + "<br>";
+         }
+
+      });
+      socketio.on("logout_info",function(data) {
+         //do something
+      });
+      socketio.on("newroom_info",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chat_list").innerHTML = "<strong>" + "List of Chatrooms:" + "</strong>" + "<br>";
+         for(var k = 0; k<data['roomsArray'].length; k++){
+         document.getElementById("chat_list").innerHTML += (data['roomsArray'][k]) + "<br>";
+        }
+      });
+      socketio.on("room_info",function(data) {
+         document.getElementById("chat_list").appendChild(document.createTextNode(data['room']));
       });
 
       function sendMessage(){
          var msg = document.getElementById("message_input").value;
-         socketio.emit("message_to_server", {message:msg});
+         socketio.emit("message_to_server", {message:msg, username:user});
       }
       function newRoom(){
-         var msg = document.getElementById("newRoom_input").value;
-         socketio.emit("message_to_server", {message:msg});
+         var nr = document.getElementById("newRoom_input").value;
+         socketio.emit("room_create", {newroom:nr, username:user});
+      }
+      function joinRoom(){
+         var rm = document.getElementById("joinRoom_input").value;
+         var ide = socket.id
+         socketio.emit("room_access", {room:rm, id, ide});
       }
       function login(){
-         var user = document.getElementById("username_input").value;
+         user = document.getElementById("username_input").value;
          //have to check if user already exits at some point as well
-         if(user == null){
+         if(user == ""){
            alert("username is null");
          }
          else{
            socketio.emit("login_success", {username:user});
            $("#welcome_message").removeClass("off");
+           $("#current_room").removeClass("off");
+           $("#users_list").removeClass("off");
            $("#action_bar").removeClass("off");
+           $("#chat_list").removeClass("off");
            $("#login_bar").addClass("off");
            $("#logout_bar").removeClass("off");
-
            $("#goodbye_message").addClass("off");
-
-
 
          }
       }
       function logout(){
-         var msg = document.getElementById("newRoom_input").value;
-         socketio.emit("message_to_server", {message:msg});
+        //socketio.emit("logout_success", {username:user});
+        $("#users_list").addClass("off");
+        $("#welcome_message").addClass("off");
+        $("#chat_list").addClass("off");
+        $("#action_bar").addClass("off");
+        $("#login_bar").removeClass("off");
+        $("#logout_bar").addClass("off");
+        $("#goodbye_message").removeClass("off");
+        $("#current_room").addClass("off");
       }
 
       </script>
@@ -64,21 +101,71 @@
        .off {
            display: none;
        }
+       .button {
+         color: white;
+         background-color: rgb(243, 62, 62);
+         padding: 14px 20px;
+         margin: 8px 0px;
+         border: none;
+         width: 25%
+       }
+
+        .buttonGreen {
+          background-color: #4CAF50;
+        }
+
+        .buttonSmall {
+          padding: 7px 10px;
+          width: 10%;
+          margin: 4px 0px;
+        }
+
+        .buttonBlue {
+          color: white;
+          background-color: #008CBA;
+        }
+
+        .buttonPurple {
+          color: white;
+          background-color: #B16FCD;
+        }
+
+        .buttonGray {
+          background-color: #768087;
+        }
+
+        .buttonRight {
+          margin-top: 1px;
+          margin-right: 2px;
+          position: absolute;
+          top: 0;
+          right: 0;
+        }
+
+        .buttonLeft {
+          margin-top: 1px;
+          margin-left: 2px;
+          position: absolute;
+          top: 0;
+          left: 0;
+        }
+
      </style>
    </head>
    <body>
 
-    <div id="login_bar">
+    <div id="login_bar" class="">
      <label for="username_input"><b>Login:</b></label>
      <input type="text" id="username_input"/>
-     <button onclick="login()">Login</button>
+     <button class="buttonBlue" onclick="login()">Login</button>
     </div>
 
     <div id="logout_bar" class="off">
-     <button onclick="logout()">Logout</button>
+     <button class="buttonGreen" onclick="logout()">Logout</button>
     </div>
-
-    <label id="welcome_message" class="off">Welcome to the chatroom!</label>
+    <div id="welcome">
+    <label id="welcome_message" class="off">Welcome</label>
+    </div>
     <label id="goodbye_message" class="off">You have left the chatroom!</label>
 
 
@@ -89,13 +176,31 @@
      <input type="text" id="newRoom_input"/>
      <button onclick="newRoom()">Create</button>
 
+     <label for="joinRoom_input"><b>Join Chatroom:</b></label>
+     <input type="text" id="joinRoom_input"/>
+     <button onclick="joinRoom()">Join</button>
+
      <label for="message_input"><b>Send Message:</b></label>
      <input type="text" id="message_input"/>
-     <button onclick="sendMessage()">send</button>
+     <button onclick="sendMessage()">Send</button>
     </div>
 
-      <div id="chatlog"></div>
-      <div id="allUsers"></div>
+    <div id="current_room" class="off">
+        <label><strong>You are not part of a chatroom!</strong></label><br>
+    </div>
+
+    <div id="chat_list" class="off">
+        <label><strong>List of Chatrooms:</strong></label><br>
+    </div>
+
+
+
+    <div id="users_list" class="off">
+      <label><strong>Users:</strong></label><br>
+    </div>
+
+    <div id="chatlog"></div>
+    <div id="allUsers"></div>
 
 
 
