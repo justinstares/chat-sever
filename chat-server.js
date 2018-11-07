@@ -69,6 +69,7 @@ io.sockets.on("connection", function(socket){
   });
   socket.on('room_create', function(data){
     // This callback runs when the server receives a new message from the client.
+
     if (rooms.indexOf(data["newroom"]) > -1) {
     //room exists already
     //maybe emit something in future
@@ -106,12 +107,12 @@ io.sockets.on("connection", function(socket){
     // This callback runs when the server receives a new message from the client.
     for (var i=usersInRoom.length-1; i>=0; i--) {
       if (usersInRoom[i] === data["username"]) {
-        users.splice(i, 1);
+        usersInRoom.splice(i, 1);
       }
     }
     io.sockets.to(data["currentroom"]).emit("room_left_message",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
     //emit an update users function?
-    socket.leave(data["room"]);
+    socket.leave(data["currentroom"]);
     io.sockets.emit("room_left_message2",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
 
 

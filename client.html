@@ -32,6 +32,7 @@
       });
       socketio.on("room_left_message2",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
+         $("#leave_room").addClass("off");
          document.getElementById("current_room").innerHTML += "You hav left the room and are not in any chatrooms.";
       });
       socketio.on("login_info",function(data) {
@@ -97,8 +98,6 @@
          socketio.emit("room_access", {room:currentrm, username:user});
       }
       function leaveRoom(){
-
-         $("#leave_room").addClass("off");
          socketio.emit("room_leave", {currentroom:currentrm, username:user});
 
       }
@@ -208,8 +207,8 @@
     <div id="leave_room" class="off">
      <button class="buttonBlue" onclick="leaveRoom()">Leave Room</button>
     </div>
-      <div id="chatlog" class="off"></div>
       <div id="usersChat" class="off"></div>
+      <div id="chatlog" class="off"></div>
     </div>
 
 
