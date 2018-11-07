@@ -5,8 +5,7 @@
      <meta http-equiv="X-UA-Compatible" content="IE=edge">
      <title>Chatroom</title>
      <meta name="viewport" content="width=device-width, initial-scale=1">
-     <!-- for whatever reason Im having trouble linking the style sheet -->
-     <!-- <link rel="stylesheet" type="text/css" href="style.css"/> -->
+     <link rel="stylesheet" type="text/css" href="style.css"/>
      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
      <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
      <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
@@ -16,18 +15,31 @@
 
       var socketio = io.connect();
       var user;
+      var currentrm;
 
       socketio.on("message_to_client",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
-         document.getElementById("chatlog").appendChild(document.createElement("hr"));
-         document.getElementById("chatlog").appendChild(document.createTextNode(data['username'] + ": " + data['message']));
+         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + ": " + data['message'];
+      });
+      socketio.on("room_left_message",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has left the room.";
+         $("#chatlog").addClass("off");
+         $("#usersChat").addClass("off");
+
+
+
+      });
+      socketio.on("room_left_message2",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("current_room").innerHTML += "You hav left the room and are not in any chatrooms.";
       });
       socketio.on("login_info",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
          document.getElementById("welcome_message").innerHTML = "Welcome to the Main Paige: " + user;
          //document.getElementById("users_list").innerHTML = "Welcome2: " + data['usersArray'];
 
-         document.getElementById("users_list").innerHTML = "<strong>" + "Users:" + "</strong>" + "<br>";
+         document.getElementById("users_list").innerHTML = "<strong>" + "Active Users:" + "</strong>" + "<br>";
         for(var i = 0; i<data['usersArray'].length; i++){
           document.getElementById("users_list").innerHTML += data['usersArray'][i] + "<br>";
          }
@@ -50,19 +62,45 @@
       socketio.on("room_info",function(data) {
          document.getElementById("chat_list").appendChild(document.createTextNode(data['room']));
       });
+      socketio.on("room_joined",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         $("#leave_room").removeClass("off");
+         document.getElementById("current_room").innerHTML = "You have joined the room: " + data['room'];
+         document.getElementById("usersChat").innerHTML = "<strong>" + "List of Users in the Chatroom:" + "</strong>";
+         for(var l = 0; l<data['usersInRoomArray'].length; l++){
+         document.getElementById("usersChat").innerHTML += (data['usersInRoomArray'][l]) + "<br>";
+          }
+      });
+      socketio.on("room_dne",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         alert("The room you entered does not exist: " + data["room"]);
+      });
 
       function sendMessage(){
+        if(currentrm == null){
+          alert("You have to join a chatroom to send messages!")
+          return;
+        }
          var msg = document.getElementById("message_input").value;
-         socketio.emit("message_to_server", {message:msg, username:user});
+         socketio.emit("message_to_server", {message:msg, username:user, currentroom:currentrm});
       }
       function newRoom(){
          var nr = document.getElementById("newRoom_input").value;
          socketio.emit("room_create", {newroom:nr, username:user});
       }
+      function privateRoom(){
+         var a = document.getElementById("newRoom_input").value;
+         socketio.emit("privateroom_create", {newroom:nr, username:user});
+      }
       function joinRoom(){
-         var rm = document.getElementById("joinRoom_input").value;
-         var ide = socket.id
-         socketio.emit("room_access", {room:rm, id, ide});
+         currentrm = document.getElementById("joinRoom_input").value;
+         socketio.emit("room_access", {room:currentrm, username:user});
+      }
+      function leaveRoom(){
+
+         $("#leave_room").addClass("off");
+         socketio.emit("room_leave", {currentroom:currentrm, username:user});
+
       }
       function login(){
          user = document.getElementById("username_input").value;
@@ -80,11 +118,17 @@
            $("#login_bar").addClass("off");
            $("#logout_bar").removeClass("off");
            $("#goodbye_message").addClass("off");
+           $("#nav").removeClass("off");
+           $("#chatlog").removeClass("off");
+           $("#usersChat").removeClass("off");
+
+
+
 
          }
       }
       function logout(){
-        //socketio.emit("logout_success", {username:user});
+        socketio.emit("logout_success", {username:user});
         $("#users_list").addClass("off");
         $("#welcome_message").addClass("off");
         $("#chat_list").addClass("off");
@@ -93,114 +137,81 @@
         $("#logout_bar").addClass("off");
         $("#goodbye_message").removeClass("off");
         $("#current_room").addClass("off");
+        $("#nav").addClass("off");
+        $("#chatlog").addClass("off");
+        $("#usersChat").addClass("off");
+
+
+
       }
 
       </script>
 
-      <style type="text/css">
-       .off {
-           display: none;
-       }
-       .button {
-         color: white;
-         background-color: rgb(243, 62, 62);
-         padding: 14px 20px;
-         margin: 8px 0px;
-         border: none;
-         width: 25%
-       }
-
-        .buttonGreen {
-          background-color: #4CAF50;
-        }
-
-        .buttonSmall {
-          padding: 7px 10px;
-          width: 10%;
-          margin: 4px 0px;
-        }
-
-        .buttonBlue {
-          color: white;
-          background-color: #008CBA;
-        }
-
-        .buttonPurple {
-          color: white;
-          background-color: #B16FCD;
-        }
-
-        .buttonGray {
-          background-color: #768087;
-        }
-
-        .buttonRight {
-          margin-top: 1px;
-          margin-right: 2px;
-          position: absolute;
-          top: 0;
-          right: 0;
-        }
-
-        .buttonLeft {
-          margin-top: 1px;
-          margin-left: 2px;
-          position: absolute;
-          top: 0;
-          left: 0;
-        }
-
-     </style>
    </head>
    <body>
 
-    <div id="login_bar" class="">
-     <label for="username_input"><b>Login:</b></label>
-     <input type="text" id="username_input"/>
-     <button class="buttonBlue" onclick="login()">Login</button>
+    <div id="nav" class="sidenav off">
+      <div id="logout_bar" class="off">
+       <button class="buttonGreen" onclick="logout()">Logout</button>
+      </div>
+      <div id="action_bar" class="off">
+       <label for="newRoom_input"><b>Create New Room:</b></label>
+       <input type="text" id="newRoom_input"/>
+       <button onclick="newRoom()">Create Public</button>
+       <button onclick="privateRoom()">Create Private</button>
+
+       <br>
+
+       <label for="joinRoom_input"><b>Join Chatroom:</b></label>
+       <input type="text" id="joinRoom_input"/>
+       <button onclick="joinRoom()">Join</button>
+       <br>
+
+       <label for="message_input"><b>Send Message:</b></label>
+       <input type="text" id="message_input"/>
+       <button onclick="sendMessage()">Send</button>
+       <br>
+      </div>
+
+      <div id="users_list" class="off">
+         <label><strong>Users:</strong></label>
+      </div>
+       <br>
+      <div id="chat_list" class="off">
+         <label><strong>List of Chatrooms:</strong></label><br>
+      </div>
+       <br>
+
     </div>
 
-    <div id="logout_bar" class="off">
-     <button class="buttonGreen" onclick="logout()">Logout</button>
+    <!-- Page content -->
+    <div id="main">
+      <div id="login_bar" class="">
+       <label for="username_input"><b>Login:</b></label>
+       <input type="text" id="username_input"/>
+       <button class="buttonBlue" onclick="login()">Login</button>
+      </div>
+
+      <div id="welcome">
+      <label id="welcome_message" class="off">Welcome</label>
+      </div>
+      <div id="current_room" class="off">
+          <label><strong>You are not part of a chatroom!</strong></label><br>
+      </div>
+      <label id="goodbye_message" class="off">You have logged out!</label>
+      <!-- <div id="sendMessage" class="off">
+      <label for="message_input"><b>Send Message:</b></label>
+      <input type="text" id="message_input"/>
+      <button onclick="sendMessage()">Send</button>
     </div>
-    <div id="welcome">
-    <label id="welcome_message" class="off">Welcome</label>
+    <br> -->
+    <div id="leave_room" class="off">
+     <button class="buttonBlue" onclick="leaveRoom()">Leave Room</button>
     </div>
-    <label id="goodbye_message" class="off">You have left the chatroom!</label>
-
-
-
-
-    <div id="action_bar" class="off">
-     <label for="newRoom_input"><b>Create New Room:</b></label>
-     <input type="text" id="newRoom_input"/>
-     <button onclick="newRoom()">Create</button>
-
-     <label for="joinRoom_input"><b>Join Chatroom:</b></label>
-     <input type="text" id="joinRoom_input"/>
-     <button onclick="joinRoom()">Join</button>
-
-     <label for="message_input"><b>Send Message:</b></label>
-     <input type="text" id="message_input"/>
-     <button onclick="sendMessage()">Send</button>
-    </div>
-
-    <div id="current_room" class="off">
-        <label><strong>You are not part of a chatroom!</strong></label><br>
-    </div>
-
-    <div id="chat_list" class="off">
-        <label><strong>List of Chatrooms:</strong></label><br>
+      <div id="chatlog" class="off"></div>
+      <div id="usersChat" class="off"></div>
     </div>
 
-
-
-    <div id="users_list" class="off">
-      <label><strong>Users:</strong></label><br>
-    </div>
-
-    <div id="chatlog"></div>
-    <div id="allUsers"></div>
 
 
 

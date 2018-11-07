@@ -4,22 +4,29 @@ var http = require("http"),
 	fs = require("fs");
 
 // Listen for HTTP connections.  This is essentially a miniature static file server that only serves our one file, client.html:
-var app = http.createServer(function(req, resp){
-	// This callback runs when a new connection is made to our HTTP server.
-
-	fs.readFile("client.html", function(err, data){
-		// This callback runs when the client.html file has been read from the filesystem.
-
-		if(err) return resp.writeHead(500);
-		resp.writeHead(200);
-		resp.end(data);
-	});
-});
+var app = http.createServer(function (request, response) {
+  if (request.url === "/style.css") {
+    fs.readFile("style.css", function(err, data){
+      if (err) return response.writeHead(500);
+      response.writeHead(200, {"Content-Type": "text/css"});
+      response.end(data);
+    })
+  }
+  else {
+    response.writeHead(200, {"Content-Type": "text/html"});
+    fs.readFile("client.html", function(err, data){
+      if(err) return response.writeHead(500);
+      response.writeHead(200);
+      response.end(data);
+    });
+  }
+})
 app.listen(3456);
 
 // Do the Socket.IO magic:
 var users = ["admin"];
 var rooms = ["public1", "public2"];
+var usersInRoom = [""];
 //var privateRoomList = ["private1", "private2"];
 
 var io = socketio.listen(app);
@@ -30,7 +37,8 @@ io.sockets.on("connection", function(socket){
 		// This callback runs when the server receives a new message from the client.
     console.log("message: "+data["message"]); // log it to the Node.JS output
     console.log("user test!: "+data["username"]);
-    io.sockets.emit("message_to_client",{message:data["message"], username:data["username"] }) // broadcast the message to other users
+    console.log("currentroom: "+data["currentroom"]);
+    io.sockets.to(data["currentroom"]).emit("message_to_client",{message:data["message"], username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
 	});
 
   socket.on('login_success', function(data){
@@ -45,6 +53,19 @@ io.sockets.on("connection", function(socket){
     }
     console.log("username: "+ data["username"]); // log it to the Node.JS output
     io.sockets.emit("login_info",{username:data["username"], usersArray:users, roomsArray:rooms}) // broadcast the message to other users
+  });
+  socket.on('logout_success', function(data){
+    // This callback runs when the server receives a new message from the client.
+    //from stack. checks if username is already in the users arrau
+
+    for (var i=users.length-1; i>=0; i--) {
+      if (users[i] === data["username"]) {
+        users.splice(i, 1);
+      }
+    }
+
+    console.log("username deleted: "+ data["username"]); // log it to the Node.JS output
+    io.sockets.emit("logout_info",{username:data["username"], usersArray:users, roomsArray:rooms}) // broadcast the message to other users
   });
   socket.on('room_create', function(data){
     // This callback runs when the server receives a new message from the client.
@@ -62,19 +83,37 @@ io.sockets.on("connection", function(socket){
   });
   socket.on('room_access', function(data){
     // This callback runs when the server receives a new message from the client.
-
+    console.log("made it here");
     if (rooms.indexOf(data["room"]) > -1) {
-    //room exists
-    //maybe emit something in future
-
-
-
-
+    // //room exists
+    // //maybe emit something in future
+    socket.join(data["room"]);
+    usersInRoom.push(data["username"]);
+    console.log(usersInRoom);
+    io.sockets.to(data["room"]).emit("room_joined",{room:data["room"], username:data["username"], usersInRoomArray:usersInRoom })
+    //
+    console.log("room exists")
     } else {
-    //Not in the array
-    alert("error this room doesnt exist!");
+    // //Not in the array
+    console.log("does not exist!");
+    io.sockets.emit("room_dne",{room:data["room"] }) // broadcast the message to other users
+
     }
-    console.log("room: "+ data["room"]); // log it to the Node.JS output
-    io.sockets.emit("room_info",{room:data["room"] }) // broadcast the message to other users
+    // console.log("room: "+ data["room"]); // log it to the Node.JS output
+    // io.sockets.emit("room_info",{room:data["room"] }) // broadcast the message to other users
+  });
+  socket.on('room_leave', function(data){
+    // This callback runs when the server receives a new message from the client.
+    for (var i=usersInRoom.length-1; i>=0; i--) {
+      if (usersInRoom[i] === data["username"]) {
+        users.splice(i, 1);
+      }
+    }
+    io.sockets.to(data["currentroom"]).emit("room_left_message",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
+    //emit an update users function?
+    socket.leave(data["room"]);
+    io.sockets.emit("room_left_message2",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
+
+
   });
 });
