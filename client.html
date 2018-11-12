@@ -23,17 +23,21 @@
       });
       socketio.on("room_left_message",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
-         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has left the room.";
-         $("#chatlog").addClass("off");
-         $("#usersChat").addClass("off");
-
-
+         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has left the room. Comment: Maybe add a new list of users below or an updated one by emitting";
+         // $("#chatlog").addClass("off");
+         // $("#usersChat").addClass("off");
 
       });
       socketio.on("room_left_message2",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
+        // $("#leave_room").addClass("off");
+        // $("#usersChat").addClass("off");
+         document.getElementById("current_room").innerHTML = "You hav left the room and are not in any chatrooms.";
+         $("#usersChat").addClass("off");
          $("#leave_room").addClass("off");
-         document.getElementById("current_room").innerHTML += "You hav left the room and are not in any chatrooms.";
+         document.getElementById("chatlog").innerHTML = "";
+         currentrm = "";
+
       });
       socketio.on("login_info",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
@@ -44,10 +48,10 @@
         for(var i = 0; i<data['usersArray'].length; i++){
           document.getElementById("users_list").innerHTML += data['usersArray'][i] + "<br>";
          }
-        document.getElementById("chat_list").innerHTML = "<strong>" + "List of Chatrooms:" + "</strong>" + "<br>";
-        for(var j = 0; j<data['roomsArray'].length; j++){
-        document.getElementById("chat_list").innerHTML += data['roomsArray'][j] + "<br>";
-         }
+         document.getElementById("chat_list").innerHTML = "<strong>" + "List of Chatrooms:" + "</strong>" + "<br>";
+        Object.keys(data['roomsLArray']).forEach(function(key) {
+         document.getElementById("chat_list").innerHTML += key + "<br>";
+        });
 
       });
       socketio.on("logout_info",function(data) {
@@ -56,27 +60,63 @@
       socketio.on("newroom_info",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
          document.getElementById("chat_list").innerHTML = "<strong>" + "List of Chatrooms:" + "</strong>" + "<br>";
-         for(var k = 0; k<data['roomsArray'].length; k++){
-         document.getElementById("chat_list").innerHTML += (data['roomsArray'][k]) + "<br>";
-        }
-      });
-      socketio.on("room_info",function(data) {
-         document.getElementById("chat_list").appendChild(document.createTextNode(data['room']));
+        //  for(var k = 0; k<data['roomsArray'].length; k++){
+        //  document.getElementById("chat_list").innerHTML += (data['roomsArray'][k]) + "<br>";
+        // }
+        //got from stack
+        Object.keys(data['roomsLArray']).forEach(function(key) {
+          document.getElementById("chat_list").innerHTML += key + "<br>";
+         //alert(key, data['roomsLArray'][key]);
+        });
+
       });
       socketio.on("room_joined",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
+
+         //need to figure out how to clear chat room
+         //document.getElementById("chatlog").innerHTML = "";
          $("#leave_room").removeClass("off");
-         document.getElementById("current_room").innerHTML = "You have joined the room: " + data['room'];
-         document.getElementById("usersChat").innerHTML = "<strong>" + "List of Users in the Chatroom:" + "</strong>";
-         for(var l = 0; l<data['usersInRoomArray'].length; l++){
-         document.getElementById("usersChat").innerHTML += (data['usersInRoomArray'][l]) + "<br>";
+         $("#usersChat").removeClass("off");
+         document.getElementById("current_room").innerHTML = "You have joined the room: " + data['currentroom'];
+         document.getElementById("usersChat").innerHTML = "<strong>" + "List of Users in the Chatroom:" + "</strong>" + "<br>";
+         for(var l = 0; l<data['roomsLArray'][data['currentroom']].length; l++){
+         document.getElementById("usersChat").innerHTML += data['roomsLArray'][data['currentroom']][l] + "<br>";
           }
+         document.getElementById("chatlog").innerHTML = "";
+
+
+      });
+      socketio.on("room_joined2",function(data) {
+      document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has joined the room!";
+
+
       });
       socketio.on("room_dne",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
-         alert("The room you entered does not exist: " + data["room"]);
+         alert("The room you entered does not exist: " + data["currentroom"]);
+      });
+      socketio.on("already_in_room",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         alert("You are currently in this room: " + data["currentroom"]);
+      });
+      socketio.on("private_room_entry",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         $("#passwordDialog").dialog({
+                         height: 400,
+                         width: 500
+                     });
+      });
+      socketio.on("password_incorrect",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         alert("Incorrect Password!");
       });
 
+      function verifyPassword(){
+        var pw = document.getElementById("password_input").value;
+        $("#passwordDialog").dialog('close');
+        socketio.emit("private_room_access", {currentroom:currentrm, username:user, passwordAttempt:pw});
+
+      }
       function sendMessage(){
         if(currentrm == null){
           alert("You have to join a chatroom to send messages!")
@@ -85,17 +125,54 @@
          var msg = document.getElementById("message_input").value;
          socketio.emit("message_to_server", {message:msg, username:user, currentroom:currentrm});
       }
-      function newRoom(){
-         var nr = document.getElementById("newRoom_input").value;
+      function publicRoom(){
+
+         var nr = document.getElementById("publicRoom_input").value;
+         if (nr == ""){
+           alert("no room name entered!");
+           return;
+         }
          socketio.emit("room_create", {newroom:nr, username:user});
+         $("#createPublicRoom").dialog('close');
       }
+      function openPublicRoomDialog(){
+        $("#createPublicRoom").dialog({
+                        height: 400,
+                        width: 500
+                    });
+
+      }
+      function openPrivateRoomDialog(){
+        $("#createPrivateRoom").dialog({
+                        height: 400,
+                        width: 500
+                    });
+
+      }
+
       function privateRoom(){
-         var a = document.getElementById("newRoom_input").value;
-         socketio.emit("privateroom_create", {newroom:nr, username:user});
+        var a = document.getElementById("privateRoom_input").value;
+        var b = document.getElementById("newPassword").value;
+        if (a == ""){
+          alert("no room name entered!");
+          return;
+        }
+        if (b == ""){
+          alert("no password entered!");
+          return;
+        }
+        socketio.emit("privateroom_create", {newprivateroom:a, password:b, username:user});
+        $("#createPrivateRoom").dialog('close');
+
+
       }
       function joinRoom(){
+        // if(currentrm != null){
+        //   alert("you have to leave the room before you can join another!");
+        //   return;
+        // }
          currentrm = document.getElementById("joinRoom_input").value;
-         socketio.emit("room_access", {room:currentrm, username:user});
+         socketio.emit("room_access", {currentroom:currentrm, username:user});
       }
       function leaveRoom(){
          socketio.emit("room_leave", {currentroom:currentrm, username:user});
@@ -154,10 +231,9 @@
        <button class="buttonGreen" onclick="logout()">Logout</button>
       </div>
       <div id="action_bar" class="off">
-       <label for="newRoom_input"><b>Create New Room:</b></label>
-       <input type="text" id="newRoom_input"/>
-       <button onclick="newRoom()">Create Public</button>
-       <button onclick="privateRoom()">Create Private</button>
+       <label><b>Create New Rooms:</b></label>
+       <button onclick="openPublicRoomDialog()">Create Public</button>
+       <button onclick="openPrivateRoomDialog()">Create Private</button>
 
        <br>
 
@@ -209,6 +285,27 @@
     </div>
       <div id="usersChat" class="off"></div>
       <div id="chatlog" class="off"></div>
+    </div>
+
+
+    <div id="createPrivateRoom" title="Create Password">
+      <label for="privateRoom_input"><b>New Private Room Name:</b></label>
+      <input type="text" placeholder="New Room Name" id="privateRoom_input" required/><br>
+      <label for="newPassword"><b>Password:</b></label><br>
+      <input type="text" placeholder="New Room Password" name="newPass" id="newPassword" maxlength="255" required/><br>
+      <button class="button buttonGreen" onclick="privateRoom()">Submit</button>
+    </div>
+
+    <div id="createPublicRoom" title="Create Password">
+      <label for="publicRoom_input"><b>New Public Room Name:</b></label>
+      <input type="text" placeholder="New Room Name" id="publicRoom_input" required/>
+      <button class="button buttonGreen" onclick="publicRoom()">Submit</button>
+    </div>
+
+    <div id="passwordDialog" title="Enter Room Password">
+      <label for="password_input"><b>Password:</b></label>
+      <input type="text" placeholder="Enter Password" id="password_input" required/>
+      <button class="button buttonGreen" onclick="verifyPassword()">Verify</button>
     </div>
 
 
