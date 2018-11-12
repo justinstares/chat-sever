@@ -97,3 +97,6 @@
 #passwordDialog{
   display: none;
 }
+#createDirectMessage{
+  display: none;
+}

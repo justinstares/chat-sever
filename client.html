@@ -15,11 +15,16 @@
 
       var socketio = io.connect();
       var user;
+      var id;
       var currentrm;
 
       socketio.on("message_to_client",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
          document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + ": " + data['message'];
+      });
+      socketio.on("new_private_message",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chatlog").innerHTML += "<hr>" + "Private Message From " + data['username'] + ": " + data['message'];
       });
       socketio.on("room_left_message",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
@@ -36,7 +41,7 @@
          $("#usersChat").addClass("off");
          $("#leave_room").addClass("off");
          document.getElementById("chatlog").innerHTML = "";
-         currentrm = "";
+         currentrm = null;
 
       });
       socketio.on("login_info",function(data) {
@@ -45,9 +50,9 @@
          //document.getElementById("users_list").innerHTML = "Welcome2: " + data['usersArray'];
 
          document.getElementById("users_list").innerHTML = "<strong>" + "Active Users:" + "</strong>" + "<br>";
-        for(var i = 0; i<data['usersArray'].length; i++){
-          document.getElementById("users_list").innerHTML += data['usersArray'][i] + "<br>";
-         }
+         Object.keys(data['usersArray']).forEach(function(key) {
+          document.getElementById("users_list").innerHTML += key + "<br>";
+         });
          document.getElementById("chat_list").innerHTML = "<strong>" + "List of Chatrooms:" + "</strong>" + "<br>";
         Object.keys(data['roomsLArray']).forEach(function(key) {
          document.getElementById("chat_list").innerHTML += key + "<br>";
@@ -74,7 +79,6 @@
          //Append an HR thematic break and the escaped HTML of the new message
 
          //need to figure out how to clear chat room
-         //document.getElementById("chatlog").innerHTML = "";
          $("#leave_room").removeClass("off");
          $("#usersChat").removeClass("off");
          document.getElementById("current_room").innerHTML = "You have joined the room: " + data['currentroom'];
@@ -82,13 +86,12 @@
          for(var l = 0; l<data['roomsLArray'][data['currentroom']].length; l++){
          document.getElementById("usersChat").innerHTML += data['roomsLArray'][data['currentroom']][l] + "<br>";
           }
-         document.getElementById("chatlog").innerHTML = "";
+         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has joined the room!";
 
 
       });
       socketio.on("room_joined2",function(data) {
-      document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has joined the room!";
-
+      document.getElementById("chatlog").innerHTML = "";
 
       });
       socketio.on("room_dne",function(data) {
@@ -125,6 +128,16 @@
          var msg = document.getElementById("message_input").value;
          socketio.emit("message_to_server", {message:msg, username:user, currentroom:currentrm});
       }
+      function sendDirectMessage(){
+        if(currentrm == null){
+          alert("You have to join a chatroom to send messages!")
+          return;
+        }
+         var user2 = document.getElementById("user_input2").value;
+         var msg = document.getElementById("message_input2").value;
+         $("#createDirectMessage").dialog('close');
+         socketio.emit("direct_message", {message:msg, username:user, username2:user2, userid:id, currentroom:currentrm});
+      }
       function publicRoom(){
 
          var nr = document.getElementById("publicRoom_input").value;
@@ -147,7 +160,12 @@
                         height: 400,
                         width: 500
                     });
-
+      }
+      function openDMDialog(){
+        $("#createDirectMessage").dialog({
+                        height: 400,
+                        width: 500
+                    });
       }
 
       function privateRoom(){
@@ -179,13 +197,16 @@
 
       }
       function login(){
+
          user = document.getElementById("username_input").value;
+         id = socketio.id;
+
          //have to check if user already exits at some point as well
          if(user == ""){
            alert("username is null");
          }
          else{
-           socketio.emit("login_success", {username:user});
+           socketio.emit("login_success", {username:user, userid:id });
            $("#welcome_message").removeClass("off");
            $("#current_room").removeClass("off");
            $("#users_list").removeClass("off");
@@ -204,7 +225,7 @@
          }
       }
       function logout(){
-        socketio.emit("logout_success", {username:user});
+        socketio.emit("logout_success", {username:user, userid:id});
         $("#users_list").addClass("off");
         $("#welcome_message").addClass("off");
         $("#chat_list").addClass("off");
@@ -246,6 +267,8 @@
        <input type="text" id="message_input"/>
        <button onclick="sendMessage()">Send</button>
        <br>
+
+
       </div>
 
       <div id="users_list" class="off">
@@ -282,6 +305,7 @@
     <br> -->
     <div id="leave_room" class="off">
      <button class="buttonBlue" onclick="leaveRoom()">Leave Room</button>
+     <button onclick="openDMDialog()">Send Direct Message</button>
     </div>
       <div id="usersChat" class="off"></div>
       <div id="chatlog" class="off"></div>
@@ -306,6 +330,13 @@
       <label for="password_input"><b>Password:</b></label>
       <input type="text" placeholder="Enter Password" id="password_input" required/>
       <button class="button buttonGreen" onclick="verifyPassword()">Verify</button>
+    </div>
+    <div id="createDirectMessage" title="Enter Message">
+      <label for="user_input2"><b>Username:</b></label>
+      <input type="text" placeholder="Enter Username" id="user_input2" required/><br>
+      <label for="message_input22"><b>Message:</b></label>
+      <input type="text" placeholder="Enter Message" id="message_input2" required/>
+      <button class="button buttonGreen" onclick="sendDirectMessage()">Send</button>
     </div>
 
 

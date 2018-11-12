@@ -25,13 +25,15 @@ app.listen(3456);
 
 // Do the Socket.IO magic:
 //just used for displaying users in one specific area
-var users = ["admin"];
+var users = {};
 //just used for displaying rooms
 var rooms = ["public1", "public2"];
 //holds private rooms and passwords
 var privateRooms = {};
 //holds all rooms and the useres with an array
 var roomsList = {"public1":[], "public2":[]};
+//holds username and socket
+
 
 
 var io = socketio.listen(app);
@@ -49,12 +51,12 @@ io.sockets.on("connection", function(socket){
   socket.on('login_success', function(data){
     // This callback runs when the server receives a new message from the client.
     //from stack. checks if username is already in the users arrau
-    if (users.indexOf(data["username"]) > -1) {
+    if (data["username"] in users) {
     //username exists already
     //maybe emit something in future
     } else {
     //Not in the array
-    users.push(data["username"]);
+    users[data["username"]] = data["userid"];
     }
     console.log("username: "+ data["username"]); // log it to the Node.JS output
     io.sockets.emit("login_info",{username:data["username"], usersArray:users, roomsLArray:roomsList}) // broadcast the message to other users
@@ -62,13 +64,7 @@ io.sockets.on("connection", function(socket){
   socket.on('logout_success', function(data){
     // This callback runs when the server receives a new message from the client.
     //from stack. checks if username is already in the users arrau
-
-    for (var i=users.length-1; i>=0; i--) {
-      if (users[i] === data["username"]) {
-        users.splice(i, 1);
-      }
-    }
-
+    data['usersArray'][data["username"]] = "";
     console.log("username deleted: "+ data["username"]); // log it to the Node.JS output
     io.sockets.emit("logout_info",{username:data["username"], usersArray:users, roomsLArray:roomsList}) // broadcast the message to other users
   });
@@ -125,7 +121,7 @@ io.sockets.on("connection", function(socket){
         roomsList[data["currentroom"]].push(data["username"]);
         socket.join(data["currentroom"]);
         io.sockets.to(data["currentroom"]).emit("room_joined",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
-        socket.to(data["currentroom"]).emit("room_joined2",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
+        socket.emit("room_joined2",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
 
 
         }
@@ -150,7 +146,7 @@ io.sockets.on("connection", function(socket){
     return;
     }
     io.sockets.to(data["currentroom"]).emit("room_joined",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
-    socket.to(data["currentroom"]).emit("room_joined2",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
+    socket.emit("room_joined2",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
 
   });
   socket.on('room_leave', function(data){
@@ -164,4 +160,13 @@ io.sockets.on("connection", function(socket){
     io.sockets.to(data["currentroom"]).emit("room_left_message",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
     socket.emit("room_left_message2",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
   });
+  socket.on('direct_message', function(data){
+    for (var i=roomsList[data["currentroom"]].length-1; i>=0; i--) {
+      if (roomsList[data["currentroom"]][i] === data["username2"]) {
+        io.sockets.to(users[data["username2"]]).emit("new_private_message",{username:data["username"], currentroom:data["currentroom"], message:data["message"], usersArray:users})
+      }
+    }
+  });
+
+
 });
