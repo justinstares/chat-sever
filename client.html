@@ -98,6 +98,10 @@
          //Append an HR thematic break and the escaped HTML of the new message
          alert("The room you entered does not exist: " + data["currentroom"]);
       });
+      socketio.on("user_dne",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         alert("The user you entered does not exist!");
+      });
       socketio.on("already_in_room",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
          alert("You are currently in this room: " + data["currentroom"]);

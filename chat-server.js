@@ -161,10 +161,15 @@ io.sockets.on("connection", function(socket){
     socket.emit("room_left_message2",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
   });
   socket.on('direct_message', function(data){
+    var check2 = false;
     for (var i=roomsList[data["currentroom"]].length-1; i>=0; i--) {
       if (roomsList[data["currentroom"]][i] === data["username2"]) {
         io.sockets.to(users[data["username2"]]).emit("new_private_message",{username:data["username"], currentroom:data["currentroom"], message:data["message"], usersArray:users})
+        check2 = true;
       }
+    }
+    if(check2 == false){
+      socket.emit("user_dne",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
     }
   });
 
