@@ -100,3 +100,9 @@
 #createDirectMessage{
   display: none;
 }
+#banUserDialog{
+  display: none;
+}
+#kickUserDialog{
+  display: none;
+}

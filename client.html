@@ -16,7 +16,8 @@
       var socketio = io.connect();
       var user;
       var id;
-      var currentrm;
+      var currentrm = "";
+      var admin = false;
 
       socketio.on("message_to_client",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
@@ -28,20 +29,24 @@
       });
       socketio.on("room_left_message",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
-         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has left the room. Comment: Maybe add a new list of users below or an updated one by emitting";
+         document.getElementById("usersChat").innerHTML = "<strong>" + "List of Users in the Chatroom:" + "</strong>" + "<br>";
+         for(var l = 0; l<data['roomsLArray'][data['currentroom']].length; l++){
+         document.getElementById("usersChat").innerHTML += data['roomsLArray'][data['currentroom']][l] + "<br>";
+          }
+
+         document.getElementById("chatlog").innerHTML += "<hr>" + data['username'] + " has left the room.";
          // $("#chatlog").addClass("off");
          // $("#usersChat").addClass("off");
 
       });
       socketio.on("room_left_message2",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
-        // $("#leave_room").addClass("off");
-        // $("#usersChat").addClass("off");
          document.getElementById("current_room").innerHTML = "You hav left the room and are not in any chatrooms.";
          $("#usersChat").addClass("off");
          $("#leave_room").addClass("off");
+         $("#banButton").addClass("off");
+         $("#kickButton").addClass("off");
          document.getElementById("chatlog").innerHTML = "";
-         currentrm = null;
 
       });
       socketio.on("login_info",function(data) {
@@ -81,6 +86,7 @@
          //need to figure out how to clear chat room
          $("#leave_room").removeClass("off");
          $("#usersChat").removeClass("off");
+         $("#usersChat").removeClass("off");
          document.getElementById("current_room").innerHTML = "You have joined the room: " + data['currentroom'];
          document.getElementById("usersChat").innerHTML = "<strong>" + "List of Users in the Chatroom:" + "</strong>" + "<br>";
          for(var l = 0; l<data['roomsLArray'][data['currentroom']].length; l++){
@@ -91,6 +97,7 @@
 
       });
       socketio.on("room_joined2",function(data) {
+
       document.getElementById("chatlog").innerHTML = "";
 
       });
@@ -114,8 +121,26 @@
                      });
       });
       socketio.on("password_incorrect",function(data) {
-         //Append an HR thematic break and the escaped HTML of the new message
          alert("Incorrect Password!");
+      });
+      socketio.on("admin_confirmed",function(data) {
+         alert("you are an admin!");
+         $("#banButton").removeClass("off");
+         $("#kickButton").removeClass("off");
+      });
+      socketio.on("kicked_alert",function(data) {
+         alert("you have been kicked!");
+         socketio.emit("room_leave", {currentroom:currentrm, username:data['kickedUser']});
+
+      });
+      socketio.on("banned_alert",function(data) {
+         alert("you have been banned!");
+         socketio.emit("room_leave", {currentroom:currentrm, username:data['bannedUser']});
+
+      });
+      socketio.on("permanent_ban",function(data) {
+         alert("you have been permanently banned from this room!");
+
       });
 
       function verifyPassword(){
@@ -171,6 +196,28 @@
                         width: 500
                     });
       }
+      function openKickDialog(){
+        $("#kickUserDialog").dialog({
+                        height: 400,
+                        width: 500
+                    });
+      }
+      function openBanDialog(){
+        $("#banUserDialog").dialog({
+                        height: 400,
+                        width: 500
+                    });
+      }
+      function kickUser(){
+        var kicked = document.getElementById("user_input3").value;
+        $("#kickUserDialog").dialog('close');
+        socketio.emit("kick_user", {username:user, kickedUser:kicked, currentroom:currentrm});
+      }
+      function banUser(){
+        var banned = document.getElementById("user_input4").value;
+        $("#banUserDialog").dialog('close');
+        socketio.emit("ban_user", {username:user, bannedUser:banned, currentroom:currentrm});
+      }
 
       function privateRoom(){
         var a = document.getElementById("privateRoom_input").value;
@@ -189,15 +236,16 @@
 
       }
       function joinRoom(){
-        // if(currentrm != null){
-        //   alert("you have to leave the room before you can join another!");
-        //   return;
-        // }
+        if(currentrm != ""){
+           alert("you have to leave the room before you can join another!");
+           return;
+         }
          currentrm = document.getElementById("joinRoom_input").value;
          socketio.emit("room_access", {currentroom:currentrm, username:user});
       }
       function leaveRoom(){
          socketio.emit("room_leave", {currentroom:currentrm, username:user});
+         currentrm = "";
 
       }
       function login(){
@@ -301,15 +349,14 @@
           <label><strong>You are not part of a chatroom!</strong></label><br>
       </div>
       <label id="goodbye_message" class="off">You have logged out!</label>
-      <!-- <div id="sendMessage" class="off">
-      <label for="message_input"><b>Send Message:</b></label>
-      <input type="text" id="message_input"/>
-      <button onclick="sendMessage()">Send</button>
-    </div>
-    <br> -->
+
+
     <div id="leave_room" class="off">
      <button class="buttonBlue" onclick="leaveRoom()">Leave Room</button>
      <button onclick="openDMDialog()">Send Direct Message</button>
+     <button id="kickButton" class="off" onclick="openKickDialog()">Kick User!</button>
+     <button id="banButton" class="off" onclick="openBanDialog()">Ban User!</button>
+
     </div>
       <div id="usersChat" class="off"></div>
       <div id="chatlog" class="off"></div>
@@ -338,9 +385,19 @@
     <div id="createDirectMessage" title="Enter Message">
       <label for="user_input2"><b>Username:</b></label>
       <input type="text" placeholder="Enter Username" id="user_input2" required/><br>
-      <label for="message_input22"><b>Message:</b></label>
+      <label for="message_input2"><b>Message:</b></label>
       <input type="text" placeholder="Enter Message" id="message_input2" required/>
       <button class="button buttonGreen" onclick="sendDirectMessage()">Send</button>
+    </div>
+    <div id="kickUserDialog" title="Temporary Ban!">
+      <label for="user_input3"><b>Username:</b></label>
+      <input type="text" placeholder="Enter Username" id="user_input3" required/><br>
+      <button class="button buttonGreen" onclick="kickUser()">Kick</button>
+    </div>
+    <div id="banUserDialog" title="Permanent Ban!">
+      <label for="user_input4"><b>Username:</b></label>
+      <input type="text" placeholder="Enter Username" id="user_input4" required/><br>
+      <button class="button buttonGreen" onclick="banUser()">Ban</button>
     </div>
 
 

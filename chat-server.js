@@ -26,13 +26,14 @@ app.listen(3456);
 // Do the Socket.IO magic:
 //just used for displaying users in one specific area
 var users = {};
-//just used for displaying rooms
-var rooms = ["public1", "public2"];
+//holds room and creator of the room!
+var rooms = {"public1": "", "public2": ""};
 //holds private rooms and passwords
 var privateRooms = {};
 //holds all rooms and the useres with an array
 var roomsList = {"public1":[], "public2":[]};
-//holds username and socket
+//holds room and array of bannes users
+var bannedUsers = {};
 
 
 
@@ -71,13 +72,15 @@ io.sockets.on("connection", function(socket){
   socket.on('room_create', function(data){
     // This callback runs when the server receives a new message from the client.
 
-    if (rooms.indexOf(data["newroom"]) > -1) {
+    if (data["newroom"] in rooms) {
     //room exists already
     //maybe emit something in future
     } else {
     //Not in the array
     roomsList[data["newroom"]] = [];
-    //rooms.push(data["newroom"]);
+    rooms[data["newroom"]] = data["username"];
+    bannedUsers[data["newroom"]] = [];
+
     }
     console.log(socket.id);
     console.log("test: " + data["username"]);
@@ -87,7 +90,7 @@ io.sockets.on("connection", function(socket){
   socket.on('privateroom_create', function(data){
     // This callback runs when the server receives a new message from the client.
 
-    if (rooms.indexOf(data["newprivateroom"]) > -1) {
+    if (data["newprivateroom"] in rooms) {
     //room exists already
     //maybe emit something in future
     } else {
@@ -95,19 +98,31 @@ io.sockets.on("connection", function(socket){
     roomsList[data["newprivateroom"]] = [];
     privateRooms[data["newprivateroom"]] = [];
     privateRooms[data["newprivateroom"]].push(data["password"]);
+    rooms[data["newprivateroom"]] = data["username"];
+    bannedUsers[data["newprivateroom"]] = [];
+
     }
     io.sockets.emit("newroom_info",{newroom:data["newprivateroom"], roomsLArray:roomsList, username:data["username"], privateRoomsArray:privateRooms}) // broadcast the message to other users
   });
   socket.on('room_access', function(data){
-    //private room checl
+    //banned user check
+    if(bannedUsers[data["currentroom"]] != null){
+      for (var i=bannedUsers[data["currentroom"]].length-1; i>=0; i--) {
+        if(bannedUsers[data["currentroom"]][i] == data["username"]){
+          socket.emit("permanent_ban",{currentroom:data["currentroom"] })
+          return;
+        }
+      }
+    }
+
+    //private room check
     if (data["currentroom"] in privateRooms) {
       socket.emit("private_room_entry",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList, privateRoomsArray: privateRooms })
       console.log("attempt to enter private room");
       return;
     }
 
-
-
+    //exists check
     if (data["currentroom"] in roomsList) {
         console.log("room exists")
 
@@ -118,10 +133,14 @@ io.sockets.on("connection", function(socket){
 
         } else {
         //Not in the room so add user to roomsList
-        roomsList[data["currentroom"]].push(data["username"]);
-        socket.join(data["currentroom"]);
-        io.sockets.to(data["currentroom"]).emit("room_joined",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
-        socket.emit("room_joined2",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
+
+          if(rooms[data["currentroom"]] == data["username"]){
+          socket.emit("admin_confirmed",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList, admins:rooms })
+          }
+          roomsList[data["currentroom"]].push(data["username"]);
+          socket.join(data["currentroom"]);
+          io.sockets.to(data["currentroom"]).emit("room_joined",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
+          socket.emit("room_joined2",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList })
 
 
         }
@@ -138,6 +157,9 @@ io.sockets.on("connection", function(socket){
       if (privateRooms[data["currentroom"]][i] === data["passwordAttempt"]) {
         roomsList[data["currentroom"]].push(data["username"]);
         socket.join(data["currentroom"]);
+        if(rooms[data["currentroom"]] == data["username"]){
+        socket.emit("admin_confirmed",{currentroom:data["currentroom"], username:data["username"], roomsLArray:roomsList, admins:rooms })
+        }
         check = true;
       }
     }
@@ -157,7 +179,7 @@ io.sockets.on("connection", function(socket){
     }
     //emit an update users function?
     socket.leave(data["currentroom"]);
-    io.sockets.to(data["currentroom"]).emit("room_left_message",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
+    io.sockets.to(data["currentroom"]).emit("room_left_message",{username:data["username"], currentroom:data["currentroom"], roomsLArray:roomsList }) // broadcast the message to other users
     socket.emit("room_left_message2",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
   });
   socket.on('direct_message', function(data){
@@ -172,6 +194,32 @@ io.sockets.on("connection", function(socket){
       socket.emit("user_dne",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
     }
   });
+  socket.on('kick_user', function(data){
+    var check3 = false;
+    for (var i=roomsList[data["currentroom"]].length-1; i>=0; i--) {
+      if (roomsList[data["currentroom"]][i] === data["kickedUser"]) {
+        socket.to(users[data["kickedUser"]]).emit("kicked_alert",{username:data["username"], currentroom:data["currentroom"], kickedUser:data["kickedUser"]})
+        check3 = true;
+      }
+    }
+    if(check3 == false){
+      socket.emit("user_dne",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
+    }
+  });
+  socket.on('ban_user', function(data){
+    var check4 = false;
+    for (var i=roomsList[data["currentroom"]].length-1; i>=0; i--) {
+      if (roomsList[data["currentroom"]][i] === data["bannedUser"]) {
+        socket.to(users[data["bannedUser"]]).emit("banned_alert",{username:data["username"], currentroom:data["currentroom"], bannedUser:data["bannedUser"]})
+        bannedUsers[data["currentroom"]].push(data["bannedUser"]);
+        check4 = true;
+      }
+    }
+    if(check4 == false){
+      socket.emit("user_dne",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
+    }
+  });
+
 
 
 });
