@@ -140,7 +140,29 @@
       });
       socketio.on("permanent_ban",function(data) {
          alert("you have been permanently banned from this room!");
-
+      });
+      socketio.on("banned_users",function(data) {
+        if(data['bannedUsersArray'][data['currentroom']].length == 0){
+        document.getElementById("usersChat").innerHTML += "<hr>" + "There are no banned users for this room." + "<br>";
+        return;
+        }
+        document.getElementById("usersChat").innerHTML += "<hr>" + "The bannes users are: ";
+        for(var i = 0; i<data['bannedUsersArray'][data['currentroom']].length; i++){
+        document.getElementById("usersChat").innerHTML += data['bannedUsersArray'][data['currentroom']][i] + "<br>";
+         }
+      });
+      socketio.on("active_users",function(data) {
+        document.getElementById("chatlog").innerHTML += "<hr>" + "List of All Active Users: " + "<br>";
+        Object.keys(data['usersArray']).forEach(function(key) {
+         document.getElementById("chatlog").innerHTML += key + "<br>";
+        });
+      });
+      socketio.on("find_admin",function(data) {
+        if(data['roomsArray'][data["currentroom"]] == ""){
+          document.getElementById("chatlog").innerHTML += "<hr>" + "There is no admin this is a default room!";
+          return;
+        }
+         document.getElementById("chatlog").innerHTML += "<hr>" + "The admin is: " + data['roomsArray'][data["currentroom"]];
       });
 
       function verifyPassword(){
@@ -150,10 +172,10 @@
 
       }
       function sendMessage(){
-        if(currentrm == null){
-          alert("You have to join a chatroom to send messages!")
-          return;
-        }
+        if(currentrm == ""){
+           alert("You have to join a chatroom before you can send messages!");
+           return;
+         }
          var msg = document.getElementById("message_input").value;
          socketio.emit("message_to_server", {message:msg, username:user, currentroom:currentrm});
       }

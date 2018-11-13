@@ -33,7 +33,7 @@ var privateRooms = {};
 //holds all rooms and the useres with an array
 var roomsList = {"public1":[], "public2":[]};
 //holds room and array of bannes users
-var bannedUsers = {};
+var bannedUsers = {"public1": [], "public2": []};
 
 
 
@@ -43,14 +43,22 @@ io.sockets.on("connection", function(socket){
 
 	socket.on('message_to_server', function(data){
 		// This callback runs when the server receives a new message from the client.
-    console.log("message: "+data["message"]); // log it to the Node.JS output
-    console.log("user test!: "+data["username"]);
-    console.log("currentroom: "+data["currentroom"]);
+    if(data["message"] == "/banned"){
+    socket.emit("banned_users",{bannedUsersArray:bannedUsers, currentroom:data["currentroom"] })
+    return;
+    }
+    if(data["message"] == "/activeusers"){
+    socket.emit("active_users",{usersArray:users })
+    return;
+    }
+    if(data["message"] == "/admin"){
+    socket.emit("find_admin",{roomsArray:rooms, currentroom:data["currentroom"]})
+    return;
+    }
     io.sockets.to(data["currentroom"]).emit("message_to_client",{message:data["message"], username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
 	});
 
   socket.on('login_success', function(data){
-    // This callback runs when the server receives a new message from the client.
     //from stack. checks if username is already in the users arrau
     if (data["username"] in users) {
     //username exists already
@@ -63,14 +71,11 @@ io.sockets.on("connection", function(socket){
     io.sockets.emit("login_info",{username:data["username"], usersArray:users, roomsLArray:roomsList}) // broadcast the message to other users
   });
   socket.on('logout_success', function(data){
-    // This callback runs when the server receives a new message from the client.
-    //from stack. checks if username is already in the users arrau
     data['usersArray'][data["username"]] = "";
     console.log("username deleted: "+ data["username"]); // log it to the Node.JS output
     io.sockets.emit("logout_info",{username:data["username"], usersArray:users, roomsLArray:roomsList}) // broadcast the message to other users
   });
   socket.on('room_create', function(data){
-    // This callback runs when the server receives a new message from the client.
 
     if (data["newroom"] in rooms) {
     //room exists already
@@ -88,7 +93,6 @@ io.sockets.on("connection", function(socket){
     io.sockets.emit("newroom_info",{newroom:data["newroom"], roomsLArray:roomsList, username:data["username"]}) // broadcast the message to other users
   });
   socket.on('privateroom_create', function(data){
-    // This callback runs when the server receives a new message from the client.
 
     if (data["newprivateroom"] in rooms) {
     //room exists already
