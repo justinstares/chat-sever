@@ -12,3 +12,4 @@ http://ec2-18-191-69-118.us-east-2.compute.amazonaws.com:3456/
 * If you type /banned in a chat room a list of all banned users appears in the chat log
 * If you type /activeusers in a chat room all active users appears in the chat log
 * If you type /admin in a chat room the creator the room or in other words admin appears in the chat log
+* Creators of the room can assign a new admin instead of themselves

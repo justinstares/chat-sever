@@ -45,6 +45,7 @@
          $("#usersChat").addClass("off");
          $("#leave_room").addClass("off");
          $("#banButton").addClass("off");
+         $("#adminButton").addClass("off");
          $("#kickButton").addClass("off");
          document.getElementById("chatlog").innerHTML = "";
 
@@ -127,15 +128,19 @@
          alert("you are an admin!");
          $("#banButton").removeClass("off");
          $("#kickButton").removeClass("off");
+         $("#adminButton").removeClass("off");
+
       });
       socketio.on("kicked_alert",function(data) {
          alert("you have been kicked!");
          socketio.emit("room_leave", {currentroom:currentrm, username:data['kickedUser']});
+         currentrm = "";
 
       });
       socketio.on("banned_alert",function(data) {
          alert("you have been banned!");
          socketio.emit("room_leave", {currentroom:currentrm, username:data['bannedUser']});
+         currentrm = "";
 
       });
       socketio.on("permanent_ban",function(data) {
@@ -163,6 +168,15 @@
           return;
         }
          document.getElementById("chatlog").innerHTML += "<hr>" + "The admin is: " + data['roomsArray'][data["currentroom"]];
+      });
+      socketio.on("switch",function(data) {
+        alert("you are no longer the admin!");
+        socketio.emit("room_leave", {currentroom:currentrm, username:user});
+        currentrm = "";
+
+      });
+      socketio.on("switch2",function(data) {
+        alert("you have been made admin of the chatroom: " + data['currentroom'] + ". Leave and join the room to assume priviledges");
       });
 
       function verifyPassword(){
@@ -230,6 +244,12 @@
                         width: 500
                     });
       }
+      function openAdminDialog(){
+        $("#adminDialog").dialog({
+                        height: 400,
+                        width: 500
+                    });
+      }
       function kickUser(){
         var kicked = document.getElementById("user_input3").value;
         $("#kickUserDialog").dialog('close');
@@ -239,6 +259,11 @@
         var banned = document.getElementById("user_input4").value;
         $("#banUserDialog").dialog('close');
         socketio.emit("ban_user", {username:user, bannedUser:banned, currentroom:currentrm});
+      }
+      function newAdmin(){
+        var admin = document.getElementById("user_input5").value;
+        $("#adminDialog").dialog('close');
+        socketio.emit("new_admin", {username:user, newAdmin:admin, currentroom:currentrm});
       }
 
       function privateRoom(){
@@ -378,6 +403,8 @@
      <button onclick="openDMDialog()">Send Direct Message</button>
      <button id="kickButton" class="off" onclick="openKickDialog()">Kick User!</button>
      <button id="banButton" class="off" onclick="openBanDialog()">Ban User!</button>
+     <button id="adminButton" class="off" onclick="openAdminDialog()">Switch Admin!</button>
+
 
     </div>
       <div id="usersChat" class="off"></div>
@@ -420,6 +447,11 @@
       <label for="user_input4"><b>Username:</b></label>
       <input type="text" placeholder="Enter Username" id="user_input4" required/><br>
       <button class="button buttonGreen" onclick="banUser()">Ban</button>
+    </div>
+    <div id="adminDialog" title="Assign a new Admin!">
+      <label for="user_input5"><b>Username:</b></label>
+      <input type="text" placeholder="Enter Username" id="user_input5" required/><br>
+      <button class="button buttonGreen" onclick="newAdmin()">New Admin</button>
     </div>
 
 

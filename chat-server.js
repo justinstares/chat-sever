@@ -24,7 +24,7 @@ var app = http.createServer(function (request, response) {
 app.listen(3456);
 
 // Do the Socket.IO magic:
-//just used for displaying users in one specific area
+//holds user and socket id
 var users = {};
 //holds room and creator of the room!
 var rooms = {"public1": "", "public2": ""};
@@ -223,6 +223,17 @@ io.sockets.on("connection", function(socket){
       socket.emit("user_dne",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
     }
   });
+	socket.on('new_admin', function(data){
+		if (data["newAdmin"] in users) {
+			rooms[data["currentroom"]] = data["newAdmin"];
+			socket.emit("switch",{currentroom:data["currentroom"] }) // broadcast the message to other users
+			socket.to(users[data["newAdmin"]]).emit("switch2",{currentroom:data["currentroom"] })
+		}else{
+			socket.emit("user_dne",{username:data["username"], currentroom:data["currentroom"] }) // broadcast the message to other users
+
+		}
+
+	});
 
 
 
