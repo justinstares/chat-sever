@@ -4,7 +4,7 @@
 
 # Instance Link
 http://ec2-18-191-69-118.us-east-2.compute.amazonaws.com:3456/
-# Crearive Portion Description
+# Creative Portion Description
 * Clicking on create Public and Private rooms as well as send direct message opens a JQuery Dialog
 * Entering or Leaving a room emits a message to other users that the user left or joined
 * Alerts are displayed if your are the admin or in other words the creator as well as if the user was banned or kicked from the room.
